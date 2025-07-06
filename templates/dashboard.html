@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard POS</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="#">POS Flask</a>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <span class="navbar-text mr-3">
+                        Bienvenido, {{ username }} ({{ role }})
+                    </span>
+                </li>
+                <li class="nav-item">
+                    <a class="btn btn-outline-light" href="{{ url_for('logout') }}">Cerrar Sesión</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h1 class="mb-4">Panel Principal</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="pos-tab" data-toggle="tab" href="#pos" role="tab" aria-controls="pos" aria-selected="true">Punto de Venta (POS)</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="inventory-tab" data-toggle="tab" href="#inventory" role="tab" aria-controls="inventory" aria-selected="false">Gestión de Inventario</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="sales-tab" data-toggle="tab" href="#sales" role="tab" aria-controls="sales" aria-selected="false">Historial de Ventas</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="categories-tab" data-toggle="tab" href="#categories" role="tab" aria-controls="categories" aria-selected="false">Gestión de Categorías</a>
+            </li>
+        </ul>
+        <div class="tab-content" id="myTabContent">
+            <div class="tab-pane fade show active" id="pos" role="tabpanel" aria-labelledby="pos-tab">
+                <h3 class="mt-4">Punto de Venta (POS)</h3>
+                <div class="row">
+                    <div class="col-md-8">
+                        <h4>Productos Disponibles</h4>
+                        <div class="form-row mb-3">
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" id="posProductSearch" placeholder="Buscar por nombre o SKU">
+                            </div>
+                            <div class="col-md-4">
+                                <select id="posProductCategoryFilter" class="form-control">
+                                    <option value="">Todas las Categorías</option>
+                                    <!-- Opciones de categoría se cargarán aquí -->
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-info btn-block" id="applyPosFilter">Buscar</button>
+                            </div>
+                        </div>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>SKU</th>
+                                    <th>Nombre</th>
+                                    <th>Precio</th>
+                                    <th>Stock</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="posProductTableBody">
+                                <!-- Productos se cargarán aquí vía JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-md-4">
+                        <h4>Carrito de Compras</h4>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Cant.</th>
+                                    <th>Subtotal</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="cartTableBody">
+                                <!-- Ítems del carrito se cargarán aquí -->
+                            </tbody>
+                        </table>
+                        <h5 class="text-right">Total: <span id="cartTotal">$0.00</span></h5>
+                        <div class="mt-3">
+                            <button class="btn btn-success btn-block" id="checkoutBtn">Finalizar Compra</button>
+                            <button class="btn btn-danger btn-block" id="clearCartBtn">Vaciar Carrito</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="inventory" role="tabpanel" aria-labelledby="inventory-tab">
+                <h3 class="mt-4">Gestión de Inventario</h3>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h4>Añadir/Editar Producto</h4>
+                        <form id="productForm">
+                            <input type="hidden" id="productId">
+                            <div class="form-row">
+                                <div class="form-group col-md-8">
+                                    <label for="productName">Nombre</label>
+                                    <input type="text" class="form-control" id="productName" required>
+                                </div>
+                                <div class="form-group col-md-2">
+                                    <label for="productPrice">Precio</label>
+                                    <input type="number" step="0.01" class="form-control" id="productPrice" required>
+                                </div>
+                                <div class="form-group col-md-2">
+                                    <label for="productCostPrice">Costo</label>
+                                    <input type="number" step="0.01" class="form-control" id="productCostPrice">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-3">
+                                    <label for="productQuantity">Cantidad</label>
+                                    <input type="number" class="form-control" id="productQuantity" required>
+                                </div>
+                                <div class="form-group col-md-5">
+                                    <label for="productSupplier">Proveedor</label>
+                                    <input type="text" class="form-control" id="productSupplier">
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label for="productCategory">Categoría</label>
+                                    <select id="productCategory" class="form-control">
+                                        <!-- Opciones de categoría se cargarán aquí -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="productDescription">Descripción</label>
+                                <textarea class="form-control" id="productDescription" rows="3"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="productImages">Imágenes</label>
+                                <input type="file" class="form-control-file" id="productImages" multiple accept="image/*">
+                                <div id="imagePreview" class="mt-2"></div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Guardar Producto</button>
+                            <button type="button" class="btn btn-secondary" id="clearProductForm">Limpiar</button>
+                        </form>
+                    </div>
+                </div>
+                <hr>
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h4>Productos Existentes</h4>
+                        <div class="form-row mb-3">
+                            <div class="col-md-4">
+                                <input type="text" class="form-control" id="productSearch" placeholder="Buscar por nombre o SKU">
+                            </div>
+                            <div class="col-md-4">
+                                <select id="productFilterCategory" class="form-control">
+                                    <option value="">Todas las Categorías</option>
+                                    <!-- Opciones de categoría se cargarán aquí -->
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-info" id="applyProductFilter">Aplicar Filtro</button>
+                            </div>
+                        </div>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>SKU</th>
+                                    <th>Nombre</th>
+                                    <th>Precio</th>
+                                    <th>Cantidad</th>
+                                    <th>Categoría</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productTableBody">
+                                <!-- Productos se cargarán aquí vía JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="sales" role="tabpanel" aria-labelledby="sales-tab">
+                <h3 class="mt-4">Historial de Ventas</h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h4>Ventas Realizadas</h4>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID Venta</th>
+                                    <th>Usuario</th>
+                                    <th>Monto Total</th>
+                                    <th>Fecha</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesTableBody">
+                                <!-- Ventas se cargarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h4>Detalles de la Venta</h4>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Cantidad</th>
+                                    <th>Precio Unitario</th>
+                                </tr>
+                            </thead>
+                            <tbody id="saleDetailsTableBody">
+                                <!-- Detalles de la venta seleccionada se cargarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="categories" role="tabpanel" aria-labelledby="categories-tab">
+                <h3 class="mt-4">Gestión de Categorías</h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h4>Añadir/Editar Categoría</h4>
+                        <form id="categoryForm">
+                            <input type="hidden" id="categoryId">
+                            <div class="form-group">
+                                <label for="categoryName">Nombre de Categoría</label>
+                                <input type="text" class="form-control" id="categoryName" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Guardar Categoría</button>
+                            <button type="button" class="btn btn-secondary" id="clearCategoryForm">Limpiar</button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <h4>Categorías Existentes</h4>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="categoryTableBody">
+                                <!-- Categorías se cargarán aquí vía JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            let cart = {}; // Carrito de compras
+
+            // Cargar categorías al inicio
+            loadCategories();
+            loadProductCategories();
+            loadProducts();
+            loadPosProducts(); // Cargar productos para la pestaña POS
+            loadSalesHistory(); // Cargar historial de ventas
+
+            // Manejar el envío del formulario de categoría
+            $('#categoryForm').submit(function(event) {
+                event.preventDefault();
+                const categoryId = $('#categoryId').val();
+                const categoryName = $('#categoryName').val();
+                const method = categoryId ? 'PUT' : 'POST';
+                const url = categoryId ? `/api/categories/${categoryId}` : '/api/categories';
+
+                $.ajax({
+                    url: url,
+                    type: method,
+                    contentType: 'application/json',
+                    data: JSON.stringify({ name: categoryName }),
+                    success: function(response) {
+                        alert(response.message);
+                        clearCategoryForm();
+                        loadCategories();
+                        loadProductCategories(); // Recargar categorías en el formulario de productos
+                        loadPosProducts(); // Recargar productos en la pestaña POS
+                    },
+                    error: function(xhr) {
+                        alert(xhr.responseJSON.error || 'Ocurrió un error.');
+                    }
+                });
+            });
+
+            // Limpiar formulario de categoría
+            $('#clearCategoryForm').click(function() {
+                clearCategoryForm();
+            });
+
+            // Función para cargar categorías
+            function loadCategories() {
+                $.get('/api/categories', function(categories) {
+                    const tbody = $('#categoryTableBody');
+                    tbody.empty();
+                    categories.forEach(category => {
+                        tbody.append(`
+                            <tr>
+                                <td>${category.id}</td>
+                                <td>${category.name}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info edit-category" data-id="${category.id}" data-name="${category.name}">Editar</button>
+                                    <button class="btn btn-sm btn-danger delete-category" data-id="${category.id}">Eliminar</button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                });
+            }
+
+            // Cargar categorías para los select de productos
+            function loadProductCategories() {
+                $.get('/api/categories', function(categories) {
+                    const productCategorySelect = $('#productCategory');
+                    const productFilterCategorySelect = $('#productFilterCategory');
+                    const posProductCategoryFilterSelect = $('#posProductCategoryFilter');
+
+                    productCategorySelect.empty();
+                    productFilterCategorySelect.empty();
+                    posProductCategoryFilterSelect.empty();
+
+                    productFilterCategorySelect.append('<option value="">Todas las Categorías</option>');
+                    posProductCategoryFilterSelect.append('<option value="">Todas las Categorías</option>');
+
+                    categories.forEach(category => {
+                        productCategorySelect.append(`<option value="${category.id}">${category.name}</option>`);
+                        productFilterCategorySelect.append(`<option value="${category.id}">${category.name}</option>`);
+                        posProductCategoryFilterSelect.append(`<option value="${category.id}">${category.name}</option>`);
+                    });
+                });
+            }
+
+            // Editar categoría
+            $('#categoryTableBody').on('click', '.edit-category', function() {
+                const id = $(this).data('id');
+                const name = $(this).data('name');
+                $('#categoryId').val(id);
+                $('#categoryName').val(name);
+            });
+
+            // Eliminar categoría
+            $('#categoryTableBody').on('click', '.delete-category', function() {
+                const id = $(this).data('id');
+                if (confirm('¿Está seguro de que desea eliminar esta categoría?')) {
+                    $.ajax({
+                        url: `/api/categories/${id}`,
+                        type: 'DELETE',
+                        success: function(response) {
+                            alert(response.message);
+                            loadCategories();
+                            loadProductCategories(); // Recargar categorías en el formulario de productos
+                            loadPosProducts(); // Recargar productos en la pestaña POS
+                        },
+                        error: function(xhr) {
+                            alert(xhr.responseJSON.error || 'Ocurrió un error.');
+                        }
+                    });
+                }
+            });
+
+            // Función para limpiar el formulario de categoría
+            function clearCategoryForm() {
+                $('#categoryId').val('');
+                $('#categoryName').val('');
+            }
+
+            // Lógica para Productos (Gestión de Inventario)
+            function loadProducts(searchTerm = '', categoryId = '') {
+                let url = '/api/products';
+                const params = new URLSearchParams();
+                if (searchTerm) {
+                    params.append('search', searchTerm);
+                }
+                if (categoryId) {
+                    params.append('category_id', categoryId);
+                }
+                if (params.toString()) {
+                    url += `?${params.toString()}`;
+                }
+
+                $.get(url, function(products) {
+                    const tbody = $('#productTableBody');
+                    tbody.empty();
+                    products.forEach(product => {
+                        tbody.append(`
+                            <tr>
+                                <td>${product.id}</td>
+                                <td>${product.sku}</td>
+                                <td>${product.name}</td>
+                                <td>$${product.price.toFixed(2)}</td>
+                                <td>${product.quantity}</td>
+                                <td>${product.category_name || 'N/A'}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info edit-product" data-id="${product.id}">Editar</button>
+                                    <button class="btn btn-sm btn-danger delete-product" data-id="${product.id}">Eliminar</button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                });
+            }
+
+            // Manejar el envío del formulario de producto
+            $('#productForm').submit(function(event) {
+                event.preventDefault();
+                const productId = $('#productId').val();
+                const productData = {
+                    sku: $('#productSku').val(),
+                    name: $('#productName').val(),
+                    description: $('#productDescription').val(),
+                    price: parseFloat($('#productPrice').val()),
+                    cost_price: parseFloat($('#productCostPrice').val()) || null,
+                    quantity: parseInt($('#productQuantity').val()),
+                    supplier: $('#productSupplier').val(),
+                    category_id: $('#productCategory').val() ? parseInt($('#productCategory').val()) : null,
+                    images: [] // Se llenará con las imágenes base64
+                };
+
+                // Procesar imágenes
+                const files = $('#productImages')[0].files;
+                let filesProcessed = 0;
+                if (files.length > 0) {
+                    Array.from(files).forEach(file => {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            productData.images.push(e.target.result);
+                            filesProcessed++;
+                            if (filesProcessed === files.length) {
+                                sendProductData(productId, productData);
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                } else {
+                    sendProductData(productId, productData);
+                }
+            });
+
+            function sendProductData(productId, productData) {
+                const method = productId ? 'PUT' : 'POST';
+                const url = productId ? `/api/products/${productId}` : '/api/products';
+
+                $.ajax({
+                    url: url,
+                    type: method,
+                    contentType: 'application/json',
+                    data: JSON.stringify(productData),
+                    success: function(response) {
+                        alert(response.message);
+                        clearProductForm();
+                        loadProducts();
+                        loadPosProducts(); // Recargar productos en la pestaña POS
+                    },
+                    error: function(xhr) {
+                        alert(xhr.responseJSON.error || 'Ocurrió un error.');
+                    }
+                });
+            }
+
+            // Limpiar formulario de producto
+            $('#clearProductForm').click(function() {
+                clearProductForm();
+            });
+
+            // Editar producto
+            $('#productTableBody').on('click', '.edit-product', function() {
+                const productId = $(this).data('id');
+                $.get(`/api/products?search=${productId}`, function(products) {
+                    const product = products[0]; // Asumimos que el ID es único
+                    if (product) {
+                        $('#productId').val(product.id);
+                        $('#productSku').val(product.sku);
+                        $('#productName').val(product.name);
+                        $('#productDescription').val(product.description || '');
+                        $('#productPrice').val(product.price);
+                        $('#productCostPrice').val(product.cost_price || '');
+                        $('#productQuantity').val(product.quantity);
+                        $('#productSupplier').val(product.supplier || '');
+                        $('#productCategory').val(product.category_id || '');
+                        
+                        // Mostrar imágenes existentes
+                        $('#imagePreview').empty();
+                        product.images.forEach(imgBase64 => {
+                            const img = `<img src="${imgBase64}" class="img-thumbnail mr-2" style="width: 100px; height: 100px;">`;
+                            $('#imagePreview').append(img);
+                        });
+                    }
+                });
+            });
+
+            // Eliminar producto
+            $('#productTableBody').on('click', '.delete-product', function() {
+                const productId = $(this).data('id');
+                if (confirm('¿Está seguro de que desea eliminar este producto?')) {
+                    $.ajax({
+                        url: `/api/products/${productId}`,
+                        type: 'DELETE',
+                        success: function(response) {
+                            alert(response.message);
+                            loadProducts();
+                            loadPosProducts(); // Recargar productos en la pestaña POS
+                        },
+                        error: function(xhr) {
+                            alert(xhr.responseJSON.error || 'Ocurrió un error.');
+                        }
+                    });
+                }
+            });
+
+            // Aplicar filtro de productos
+            $('#applyProductFilter').click(function() {
+                const searchTerm = $('#productSearch').val();
+                const categoryId = $('#productFilterCategory').val();
+                loadProducts(searchTerm, categoryId);
+            });
+
+            // Función para limpiar el formulario de producto
+            function clearProductForm() {
+                $('#productId').val('');
+                $('#productForm')[0].reset(); // Resetea todos los campos del formulario
+                $('#imagePreview').empty();
+            }
+
+            // Lógica para Punto de Venta (POS)
+            function loadPosProducts(searchTerm = '', categoryId = '') {
+                let url = '/api/products';
+                const params = new URLSearchParams();
+                if (searchTerm) {
+                    params.append('search', searchTerm);
+                }
+                if (categoryId) {
+                    params.append('category_id', categoryId);
+                }
+                if (params.toString()) {
+                    url += `?${params.toString()}`;
+                }
+
+                $.get(url, function(products) {
+                    const tbody = $('#posProductTableBody');
+                    tbody.empty();
+                    products.forEach(product => {
+                        tbody.append(`
+                            <tr>
+                                <td>${product.id}</td>
+                                <td>${product.sku}</td>
+                                <td>${product.name}</td>
+                                <td>$${product.price.toFixed(2)}</td>
+                                <td>${product.quantity}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success add-to-cart" data-id="${product.id}" data-name="${product.name}" data-price="${product.price}" data-quantity="${product.quantity}">Añadir</button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                });
+            }
+
+            // Aplicar filtro POS
+            $('#applyPosFilter').click(function() {
+                const searchTerm = $('#posProductSearch').val();
+                const categoryId = $('#posProductCategoryFilter').val();
+                loadPosProducts(searchTerm, categoryId);
+            });
+
+            // Añadir al carrito
+            $('#posProductTableBody').on('click', '.add-to-cart', function() {
+                const id = $(this).data('id');
+                const name = $(this).data('name');
+                const price = parseFloat($(this).data('price'));
+                const stock = parseInt($(this).data('quantity'));
+
+                if (cart[id]) {
+                    if (cart[id].quantity < stock) {
+                        cart[id].quantity++;
+                    } else {
+                        alert('No hay suficiente stock disponible.');
+                    }
+                } else {
+                    if (stock > 0) {
+                        cart[id] = { id, name, price, quantity: 1, stock };
+                    } else {
+                        alert('Producto sin stock.');
+                    }
+                }
+                updateCart();
+            });
+
+            // Actualizar carrito
+            function updateCart() {
+                const tbody = $('#cartTableBody');
+                tbody.empty();
+                let total = 0;
+
+                for (const productId in cart) {
+                    const item = cart[productId];
+                    const subtotal = item.quantity * item.price;
+                    total += subtotal;
+                    tbody.append(`
+                        <tr>
+                            <td>${item.name}</td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm cart-qty" data-id="${item.id}" value="${item.quantity}" min="1" max="${item.stock}" style="width: 70px;">
+                            </td>
+                            <td>$${subtotal.toFixed(2)}</td>
+                            <td>
+                                <button class="btn btn-sm btn-danger remove-from-cart" data-id="${item.id}">X</button>
+                            </td>
+                        </tr>
+                    `);
+                }
+                $('#cartTotal').text(`$${total.toFixed(2)}`);
+            }
+
+            // Cambiar cantidad en el carrito
+            $('#cartTableBody').on('change', '.cart-qty', function() {
+                const id = $(this).data('id');
+                let newQty = parseInt($(this).val());
+                const stock = cart[id].stock;
+
+                if (newQty < 1) newQty = 1;
+                if (newQty > stock) {
+                    alert('No hay suficiente stock disponible.');
+                    newQty = stock;
+                    $(this).val(newQty);
+                }
+                cart[id].quantity = newQty;
+                updateCart();
+            });
+
+            // Eliminar del carrito
+            $('#cartTableBody').on('click', '.remove-from-cart', function() {
+                const id = $(this).data('id');
+                delete cart[id];
+                updateCart();
+            });
+
+            // Vaciar carrito
+            $('#clearCartBtn').click(function() {
+                if (confirm('¿Está seguro de que desea vaciar el carrito?')) {
+                    cart = {};
+                    updateCart();
+                }
+            });
+
+            // Finalizar compra
+            $('#checkoutBtn').click(function() {
+                if (Object.keys(cart).length === 0) {
+                    alert('El carrito está vacío.');
+                    return;
+                }
+
+                if (confirm('¿Confirmar la compra?')) {
+                    const cartItems = Object.values(cart).map(item => ({
+                        id: item.id,
+                        quantity: item.quantity,
+                        price: item.price
+                    }));
+                    const totalAmount = parseFloat($('#cartTotal').text().replace('$', ''));
+
+                    $.ajax({
+                        url: '/api/sales',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ cart: cartItems, total: totalAmount }),
+                        success: function(response) {
+                            alert(response.message);
+                            cart = {};
+                            updateCart();
+                            loadPosProducts(); // Recargar productos para actualizar stock
+                            loadSalesHistory(); // Actualizar historial de ventas
+                        },
+                        error: function(xhr) {
+                            alert(xhr.responseJSON.error || 'Ocurrió un error al procesar la venta.');
+                        }
+                    });
+                }
+            });
+
+            // Lógica para Historial de Ventas
+            function loadSalesHistory() {
+                $.get('/api/sales', function(sales) {
+                    const tbody = $('#salesTableBody');
+                    tbody.empty();
+                    sales.forEach(sale => {
+                        tbody.append(`
+                            <tr>
+                                <td>${sale.id}</td>
+                                <td>${sale.username}</td>
+                                <td>$${sale.total_amount.toFixed(2)}</td>
+                                <td>${sale.sale_date}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info view-sale-details" data-id="${sale.id}">Ver Detalles</button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                });
+            }
+
+            // Ver detalles de venta
+            $('#salesTableBody').on('click', '.view-sale-details', function() {
+                const saleId = $(this).data('id');
+                $.get(`/api/sales/${saleId}/items`, function(items) {
+                    const tbody = $('#saleDetailsTableBody');
+                    tbody.empty();
+                    items.forEach(item => {
+                        tbody.append(`
+                            <tr>
+                                <td>${item.name}</td>
+                                <td>${item.quantity}</td>
+                                <td>$${item.price_per_unit.toFixed(2)}</td>
+                            </tr>
+                        `);
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
