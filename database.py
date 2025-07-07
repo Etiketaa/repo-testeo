@@ -1,6 +1,16 @@
 import sqlite3
 
-DATABASE = 'pos_system.db'
+import os
+
+# Obtener la ruta absoluta del directorio del script actual
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Definir la ruta absoluta de la base de datos
+import os
+
+# Obtener la ruta absoluta del directorio del script actual
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Definir la ruta absoluta de la base de datos
+DATABASE = os.path.join(BASE_DIR, 'pos_system.db')
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
