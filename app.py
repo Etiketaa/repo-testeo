@@ -104,12 +104,12 @@ def register():
             cursor.execute("INSERT INTO users (username, password, role_id, status) VALUES (?, ?, ?, ?)",
                            (username, hashed_password, role_id, 'pending'))
             conn.commit()
-            flash('Registro exitoso. Tu cuenta está pendiente de aprobación.', 'success')
+            flash('¡Registro exitoso! Tu cuenta está pendiente de aprobación por un administrador.', 'success')
             return redirect(url_for('login'))
         except sqlite3.IntegrityError:
             flash('El nombre de usuario ya existe.', 'danger')
         except Exception as e:
-            flash(f'Ocurrió un error al registrar el usuario: {e}', 'danger')
+            flash(f'Ocurrió un error: {e}', 'danger')
         finally:
             conn.close()
 
@@ -122,6 +122,49 @@ def logout():
     session.pop('user_id', None)
     flash('Has cerrado sesión.', 'info')
     return redirect(url_for('login'))
+
+@app.route('/register_user', methods=['GET', 'POST'])
+@login_required
+@role_required(['admin'])
+def register_user():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        role_name = request.form['role']
+
+        if not username or not password or not role_name:
+            flash('Todos los campos son obligatorios.', 'danger')
+            return redirect(url_for('register_user'))
+
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Obtener role_id
+        cursor.execute("SELECT id FROM roles WHERE name = ?", (role_name,))
+        role_data = cursor.fetchone()
+        if not role_data:
+            flash('Rol inválido.', 'danger')
+            conn.close()
+            return redirect(url_for('register_user'))
+        role_id = role_data[0]
+
+        hashed_password = hashlib.sha256(password.encode('utf-8')).hexdigest()
+        
+        try:
+            # El usuario creado por un admin se aprueba directamente
+            cursor.execute("INSERT INTO users (username, password, role_id, status) VALUES (?, ?, ?, ?)",
+                           (username, hashed_password, role_id, 'approved'))
+            conn.commit()
+            flash(f'Usuario "{username}" creado exitosamente como {role_name}.', 'success')
+            return redirect(url_for('admin_users'))
+        except sqlite3.IntegrityError:
+            flash('El nombre de usuario ya existe.', 'danger')
+        except Exception as e:
+            flash(f'Ocurrió un error al registrar el usuario: {e}', 'danger')
+        finally:
+            conn.close()
+
+    return render_template('register_user.html')
 
 @app.route('/dashboard')
 @login_required

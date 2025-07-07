@@ -50,6 +50,11 @@
             <li class="nav-item">
                 <a class="nav-link" id="categories-tab" data-toggle="tab" href="#categories" role="tab" aria-controls="categories" aria-selected="false">Gestión de Categorías</a>
             </li>
+            {% if role == 'admin' %}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('admin_users') }}">Administrar Usuarios</a>
+            </li>
+            {% endif %}
         </ul>
         <div class="tab-content" id="myTabContent">
             <div class="tab-pane fade show active" id="pos" role="tabpanel" aria-labelledby="pos-tab">

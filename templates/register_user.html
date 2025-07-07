@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Nuevo Usuario</title>
+    <title>Registrar Nuevo Usuario</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h3>Crear una Cuenta</h3>
+                        <h3>Registrar Nuevo Usuario</h3>
                     </div>
                     <div class="card-body">
                         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -22,7 +22,7 @@
                                 {% endfor %}
                             {% endif %}
                         {% endwith %}
-                        <form method="POST" action="{{ url_for('register') }}">
+                        <form method="POST" action="{{ url_for('register_user') }}">
                             <div class="form-group">
                                 <label for="username">Nombre de Usuario</label>
                                 <input type="text" class="form-control" id="username" name="username" required>
@@ -32,21 +32,17 @@
                                 <input type="password" class="form-control" id="password" name="password" required>
                             </div>
                             <div class="form-group">
-                                <label for="confirm_password">Confirmar Contraseña</label>
-                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="role">Quiero ser:</label>
+                                <label for="role">Rol</label>
                                 <select class="form-control" id="role" name="role">
-                                    <option value="venta">Vendedor</option>
+                                    <option value="vendedor">Vendedor</option>
                                     <option value="admin">Administrador</option>
                                 </select>
                             </div>
-                            <button type="submit" class="btn btn-success btn-block">Registrarme</button>
+                            <button type="submit" class="btn btn-primary btn-block">Registrar Usuario</button>
                         </form>
                     </div>
                     <div class="card-footer text-center">
-                        <a href="{{ url_for('login') }}">¿Ya tienes una cuenta? Inicia Sesión</a>
+                        <a href="{{ url_for('dashboard') }}">Volver al Panel</a>
                     </div>
                 </div>
             </div>
